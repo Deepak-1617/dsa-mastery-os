@@ -24,6 +24,7 @@ import type {
   Challenge,
 } from "../types/models";
 import { isSupabaseConfigured } from "../lib/env";
+import { getSupabase } from "../lib/supabase";
 import { getUserId, mutate, recordActivity, snapshot } from "./db";
 import type { LocalUser } from "./types";
 import {
@@ -552,20 +553,67 @@ export function createGroup(name: string, description: string): Group {
   return group;
 }
 
-export function createInvitation(groupId: string): GroupInvitation {
+export async function createInvitation(groupId: string): Promise<GroupInvitation> {
   const userId = requireUser();
   const db = snapshot();
   const member = db.groupMembers.find((item) => item.groupId === groupId && item.userId === userId);
   if (!member || (member.role !== "OWNER" && member.role !== "ADMIN")) {
     throw new AppError("FORBIDDEN", "Only owners and admins can invite.");
   }
+  
+  const token = createId().replaceAll("-", "").slice(0, 12).toUpperCase();
+  const expiresAt = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
+  
+  // Store in Supabase group_invitations table for cross-user access
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = getSupabase();
+      if (supabase) {
+        const { data, error } = await supabase
+          .from("group_invitations")
+          .insert({
+            group_id: groupId,
+            invited_by: userId,
+            token_hash: token, // In production, hash this
+            status: "PENDING",
+            expires_at: expiresAt,
+          })
+          .select()
+          .single();
+        
+        if (error) throw error;
+        
+        const invitation: GroupInvitation = {
+          id: data.id,
+          groupId: data.group_id,
+          invitedBy: data.invited_by,
+          token,
+          status: data.status,
+          expiresAt: data.expires_at,
+          createdAt: data.created_at,
+        };
+        
+        // Also add to local state
+        mutate((state) => {
+          state.invitations.push(invitation);
+        });
+        
+        return invitation;
+      }
+    } catch (error) {
+      console.error("Failed to create invitation in Supabase:", error);
+      throw new AppError("INVITATION_ERROR", "Failed to create invitation. Please try again.");
+    }
+  }
+  
+  // Fallback to local storage if Supabase not configured
   const invitation: GroupInvitation = {
     id: createId(),
     groupId,
     invitedBy: userId,
-    token: createId().replaceAll("-", "").slice(0, 12).toUpperCase(),
+    token,
     status: "PENDING",
-    expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
+    expiresAt,
     createdAt: nowIso(),
   };
   mutate((state) => {
@@ -577,22 +625,112 @@ export function createInvitation(groupId: string): GroupInvitation {
 export async function acceptInvitation(token: string): Promise<Group> {
   const userId = requireUser();
   
-  // Force pull latest data from cloud before checking invitation
+  // Normalize token
+  const normalizedToken = token.trim().toUpperCase();
+  
+  // Query Supabase directly for the invitation (cross-user access)
   if (isSupabaseConfigured()) {
     try {
-      const { pullCloudWorkspace } = await import("./cloudSync");
-      await pullCloudWorkspace();
+      const supabase = getSupabase();
+      if (supabase) {
+        const { data: invitation, error } = await supabase
+          .from("group_invitations")
+          .select("*")
+          .eq("token_hash", normalizedToken)
+          .eq("status", "PENDING")
+          .single();
+        
+        if (error || !invitation) {
+          throw new AppError(
+            "NOT_FOUND", 
+            "Invitation token not found. Make sure you copied the entire token correctly."
+          );
+        }
+        
+        // Check expiration
+        if (new Date(invitation.expires_at).getTime() < Date.now()) {
+          throw new AppError("EXPIRED", "Invitation has expired. Ask for a new one.");
+        }
+        
+        // Get group info
+        const { data: groupData, error: groupError } = await supabase
+          .from("groups")
+          .select("*")
+          .eq("id", invitation.group_id)
+          .single();
+        
+        if (groupError || !groupData) {
+          throw new AppError("NOT_FOUND", "Group not found.");
+        }
+        
+        // Check if already a member
+        const { data: existingMember } = await supabase
+          .from("group_members")
+          .select("*")
+          .eq("group_id", groupData.id)
+          .eq("user_id", userId)
+          .maybeSingle();
+        
+        if (!existingMember) {
+          // Add user to group
+          const { error: memberError } = await supabase
+            .from("group_members")
+            .insert({
+              group_id: groupData.id,
+              user_id: userId,
+              role: "MEMBER",
+            });
+          
+          if (memberError) throw memberError;
+        }
+        
+        // Mark invitation as accepted
+        await supabase
+          .from("group_invitations")
+          .update({ 
+            status: "ACCEPTED",
+            accepted_by: userId 
+          })
+          .eq("id", invitation.id);
+        
+        // Update local state
+        const group: Group = {
+          id: groupData.id,
+          name: groupData.name,
+          description: groupData.description,
+          ownerId: groupData.owner_id,
+          createdAt: groupData.created_at,
+        };
+        
+        mutate((state) => {
+          // Add group if not exists
+          if (!state.groups.find((g) => g.id === group.id)) {
+            state.groups.push(group);
+          }
+          
+          // Add membership if not exists
+          if (!state.groupMembers.find((m) => m.groupId === group.id && m.userId === userId)) {
+            state.groupMembers.push({
+              groupId: group.id,
+              userId,
+              role: "MEMBER",
+              joinedAt: nowIso(),
+              shareProgress: false,
+            });
+          }
+        });
+        
+        return group;
+      }
     } catch (error) {
-      console.error("Failed to sync before accepting invitation:", error);
+      if (error instanceof AppError) throw error;
+      console.error("Failed to accept invitation from Supabase:", error);
+      throw new AppError("INVITATION_ERROR", "Failed to join group. Please try again.");
     }
   }
   
+  // Fallback to local storage
   const db = snapshot();
-  
-  // Normalize token: trim whitespace and convert to uppercase for comparison
-  const normalizedToken = token.trim().toUpperCase();
-  
-  // Find invitation (case-insensitive comparison)
   const invitation = db.invitations.find((item) => item.token.toUpperCase() === normalizedToken);
   
   if (!invitation) {
