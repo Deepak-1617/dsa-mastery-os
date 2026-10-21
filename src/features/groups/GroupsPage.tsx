@@ -111,8 +111,8 @@ export function GroupsPage() {
                 {me?.shareProgress ? "Stop sharing progress" : "Share topic progress"}
               </button>
               {(me?.role === "OWNER" || me?.role === "ADMIN") && (
-                <button className="button button-secondary" onClick={() => wrap(() => {
-                  const inv = createInvitation(active.id);
+                <button className="button button-secondary" onClick={() => wrap(async () => {
+                  const inv = await createInvitation(active.id);
                   const tokenText = inv.token;
                   navigator.clipboard.writeText(tokenText).then(() => {
                     alert(`Invitation token copied to clipboard!\n\nToken: ${tokenText}\n\nShare this with someone to invite them to the group.`);
