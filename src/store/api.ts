@@ -577,13 +577,35 @@ export function createInvitation(groupId: string): GroupInvitation {
 export function acceptInvitation(token: string): Group {
   const userId = requireUser();
   const db = snapshot();
-  const invitation = db.invitations.find((item) => item.token === token && item.status === "PENDING");
-  if (!invitation) throw new AppError("NOT_FOUND", "Invitation is invalid.");
-  if (new Date(invitation.expiresAt).getTime() < Date.now()) {
-    throw new AppError("EXPIRED", "Invitation has expired.");
+  
+  // Normalize token: trim whitespace and convert to uppercase for comparison
+  const normalizedToken = token.trim().toUpperCase();
+  
+  // Find invitation (case-insensitive comparison)
+  const invitation = db.invitations.find((item) => item.token.toUpperCase() === normalizedToken);
+  
+  if (!invitation) {
+    throw new AppError(
+      "NOT_FOUND", 
+      "Invitation token not found. Make sure you copied the entire token correctly."
+    );
   }
+  
+  if (invitation.status !== "PENDING") {
+    if (invitation.status === "ACCEPTED") {
+      throw new AppError("ALREADY_USED", "This invitation has already been used.");
+    } else {
+      throw new AppError("INVALID", `This invitation is no longer valid (status: ${invitation.status}).`);
+    }
+  }
+  
+  if (new Date(invitation.expiresAt).getTime() < Date.now()) {
+    throw new AppError("EXPIRED", "Invitation has expired. Ask for a new one.");
+  }
+  
   const group = db.groups.find((item) => item.id === invitation.groupId);
   if (!group) throw new AppError("NOT_FOUND", "Group missing.");
+  
   mutate((state) => {
     const already = state.groupMembers.some((item) => item.groupId === group.id && item.userId === userId);
     if (!already) {

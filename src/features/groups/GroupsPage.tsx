@@ -107,7 +107,12 @@ export function GroupsPage() {
               {(me?.role === "OWNER" || me?.role === "ADMIN") && (
                 <button className="button button-secondary" onClick={() => wrap(() => {
                   const inv = createInvitation(active.id);
-                  window.prompt("Share this invitation token", inv.token);
+                  const tokenText = inv.token;
+                  navigator.clipboard.writeText(tokenText).then(() => {
+                    alert(`Invitation token copied to clipboard!\n\nToken: ${tokenText}\n\nShare this with someone to invite them to the group.`);
+                  }).catch(() => {
+                    window.prompt("Share this invitation token (copy it):", tokenText);
+                  });
                 })}>
                   Create invitation
                 </button>
@@ -121,7 +126,36 @@ export function GroupsPage() {
             {invites.length > 0 && (
               <>
                 <h3>Pending invitations</h3>
-                <ul>{invites.map((inv) => <li key={inv.id}><code>{inv.token}</code> expires {new Date(inv.expiresAt).toLocaleDateString()}</li>)}</ul>
+                <ul>{invites.map((inv) => (
+                  <li key={inv.id} style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                    <code style={{ 
+                      background: "#f5f5f5", 
+                      padding: "4px 8px", 
+                      borderRadius: "4px",
+                      fontFamily: "monospace",
+                      fontSize: "14px",
+                      letterSpacing: "1px"
+                    }}>
+                      {inv.token}
+                    </code>
+                    <button 
+                      className="button button-secondary" 
+                      style={{ padding: "4px 8px", fontSize: "12px" }}
+                      onClick={() => {
+                        navigator.clipboard.writeText(inv.token).then(() => {
+                          alert("Token copied!");
+                        }).catch(() => {
+                          window.prompt("Copy this token:", inv.token);
+                        });
+                      }}
+                    >
+                      Copy
+                    </button>
+                    <span style={{ fontSize: "12px", color: "#666" }}>
+                      expires {new Date(inv.expiresAt).toLocaleDateString()}
+                    </span>
+                  </li>
+                ))}</ul>
               </>
             )}
           </div>
