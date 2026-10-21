@@ -574,8 +574,19 @@ export function createInvitation(groupId: string): GroupInvitation {
   return invitation;
 }
 
-export function acceptInvitation(token: string): Group {
+export async function acceptInvitation(token: string): Promise<Group> {
   const userId = requireUser();
+  
+  // Force pull latest data from cloud before checking invitation
+  if (isSupabaseConfigured()) {
+    try {
+      const { pullCloudWorkspace } = await import("./cloudSync");
+      await pullCloudWorkspace();
+    } catch (error) {
+      console.error("Failed to sync before accepting invitation:", error);
+    }
+  }
+  
   const db = snapshot();
   
   // Normalize token: trim whitespace and convert to uppercase for comparison

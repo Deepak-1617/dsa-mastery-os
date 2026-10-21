@@ -30,10 +30,13 @@ export function GroupsPage() {
   const groups = listGroups();
   const active = groups.find((g) => g.id === selected) ?? groups[0];
 
-  function wrap(fn: () => void) {
+  function wrap(fn: () => void | Promise<void>) {
     try {
       setError("");
-      fn();
+      const result = fn();
+      if (result instanceof Promise) {
+        result.catch((err) => setError(errorMessage(err)));
+      }
     } catch (err) {
       setError(errorMessage(err));
     }
@@ -72,11 +75,14 @@ export function GroupsPage() {
           <label>Description<input value={description} onChange={(e) => setDescription(e.target.value)} /></label>
           <button className="button button-primary">Create</button>
         </form>
-        <form className="panel form-stack" onSubmit={(e) => { e.preventDefault(); wrap(() => {
-          const group = acceptInvitation(token.trim());
-          setToken("");
-          setSelected(group.id);
-        }); }}>
+        <form className="panel form-stack" onSubmit={async (e) => { 
+          e.preventDefault(); 
+          wrap(async () => {
+            const group = await acceptInvitation(token.trim());
+            setToken("");
+            setSelected(group.id);
+          }); 
+        }}>
           <h2>Join with a token</h2>
           <label>Invitation token<input value={token} onChange={(e) => setToken(e.target.value)} required /></label>
           <button className="button button-secondary">Join</button>
