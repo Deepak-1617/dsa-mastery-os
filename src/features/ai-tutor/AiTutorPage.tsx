@@ -71,11 +71,16 @@ export function AiTutorPage() {
   const [topicSlug, setTopicSlug] = useState(params.get("topic") ?? "arrays");
   const history = getAiHistory();
   const bottomRef = useRef<HTMLDivElement>(null);
+  const prevHistoryLength = useRef(history.length);
   const topic = getTopic(topicSlug) ?? topics[0];
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ block: "nearest" });
-  }, [history.length, busy]);
+    // Only scroll when new messages are added, not on initial load or every render
+    if (history.length > prevHistoryLength.current && history.length > 0) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }
+    prevHistoryLength.current = history.length;
+  }, [history.length]);
 
   async function send(text: string, helpLevel: HelpLevel) {
     const question = text.trim();

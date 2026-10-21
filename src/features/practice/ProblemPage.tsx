@@ -98,6 +98,7 @@ export function ProblemPage() {
   const [coachBusy, setCoachBusy] = useState(false);
   const [coachError, setCoachError] = useState("");
   const coachBottomRef = useRef<HTMLDivElement>(null);
+  const prevCoachMessagesLength = useRef(0);
 
   useEffect(() => {
     if (!problem) return;
@@ -124,8 +125,12 @@ export function ProblemPage() {
     .slice(0, 5);
 
   useEffect(() => {
-    coachBottomRef.current?.scrollIntoView({ block: "nearest" });
-  }, [coachMessages.length, coachBusy]);
+    // Only scroll when new coach messages are added, not on initial load
+    if (coachMessages.length > prevCoachMessagesLength.current && coachMessages.length > 0) {
+      coachBottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }
+    prevCoachMessagesLength.current = coachMessages.length;
+  }, [coachMessages.length]);
 
   if (!problem) {
     return (
