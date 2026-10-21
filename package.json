@@ -1,0 +1,41 @@
+{
+  "name": "dsa-mastery-os",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5173",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 4173",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "oxlint src tests",
+    "seed:curriculum": "tsx scripts/seed-curriculum.ts"
+  },
+  "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
+    "@supabase/supabase-js": "^2.75.0",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.545.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.9.4",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "dotenv": "^17.2.3",
+    "jsdom": "^27.0.0",
+    "oxlint": "^1.81.0",
+    "tsx": "^4.20.6",
+    "typescript": "~5.9.3",
+    "vite": "^8.3.0",
+    "vitest": "^4.0.0"
+  }
+}

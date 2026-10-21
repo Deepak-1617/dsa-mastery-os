@@ -1,0 +1,15 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.local
+.env.*.local
+supabase/.env.functions.local
+playwright-report/
+test-results/
+.DS_Store
+*.log
+.vite/
+.idea/
+.vscode/
+!.vscode/extensions.json

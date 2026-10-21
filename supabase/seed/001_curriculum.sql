@@ -1,0 +1,28 @@
+insert into public.topics (slug, phase, title, description, sort_order) values
+  ('arrays', 1, 'Arrays', 'Indexed collections and in-place techniques.', 1),
+  ('strings', 1, 'Strings', 'String manipulation and pattern recognition.', 2),
+  ('matrix', 1, 'Matrix', 'Two-dimensional arrays and matrix traversal.', 3),
+  ('frequency-arrays', 1, 'Frequency Arrays', 'Counting with bounded frequency tables.', 4),
+  ('list-arraylist', 1, 'List and ArrayList', 'Resizable ordered Java collections.', 5),
+  ('set', 1, 'Set', 'Uniqueness and membership structures.', 6),
+  ('map-hashmap', 1, 'Map and HashMap', 'Key-value lookup and frequency counting.', 7),
+  ('sorting-custom-sorting', 1, 'Sorting and Custom Sorting', 'Sorting algorithms and Java comparators.', 8),
+  ('searching', 1, 'Searching', 'Linear search, binary search, and bounds.', 9),
+  ('prefix-array', 1, 'Prefix Array', 'Prefix sums and cumulative information.', 10),
+  ('precomputation', 1, 'Precomputation', 'Preprocessing for faster queries.', 11),
+  ('two-pointers', 2, 'Two Pointers', 'Controlled pointer movement patterns.', 12),
+  ('sliding-window', 2, 'Sliding Window', 'Contiguous range optimization techniques.', 13),
+  ('stack', 2, 'Stack', 'LIFO and monotonic stack patterns.', 14),
+  ('queue', 2, 'Queue', 'FIFO processing and BFS foundations.', 15),
+  ('priority-queue', 2, 'Priority Queue', 'Heap-based priority processing.', 16),
+  ('deque', 2, 'Deque', 'Double-ended and monotonic deque techniques.', 17),
+  ('linked-list', 2, 'Linked List', 'Node references and pointer manipulation.', 18),
+  ('trees', 2, 'Trees: Binary Trees and Binary Search Trees', 'Binary trees and binary search trees.', 19),
+  ('tree-traversal', 2, 'Tree Traversal', 'DFS and BFS traversal orders.', 20),
+  ('tree-paths', 2, 'Tree Paths', 'Root-to-leaf and path-state problems.', 21),
+  ('bit-manipulation', 2, 'Bit Manipulation', 'Binary operators, shifts, and XOR.', 22)
+on conflict (slug) do update set
+  title = excluded.title,
+  description = excluded.description,
+  phase = excluded.phase,
+  sort_order = excluded.sort_order;
